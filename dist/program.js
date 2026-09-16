@@ -45,6 +45,10 @@ function readRows(io, file) {
         return parsed;
     throw new Error('Expected a JSON object or an array of objects.');
 }
+/** The rows of a write answer: one entity for a single row, the collection for a batch. */
+function rowsOf(result) {
+    return 'entity' in result.data ? [result.data.entity] : result.data.collection;
+}
 /** Drops undefined values so absent flags never reach the wire. */
 function compact(obj) {
     return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
@@ -111,8 +115,9 @@ export function buildProgram(io = defaultIo) {
         .action(async function () {
         const { file } = this.opts();
         const rows = readRows(io, file);
-        const result = await getClient(this).postings.upsert(rows);
-        emitFor(this)(result, () => renderPostings(result.data.collection));
+        const api = getClient(this);
+        const result = Array.isArray(rows) ? await api.postings.upsert(rows) : await api.postings.upsert(rows);
+        emitFor(this)(result, () => renderPostings(rowsOf(result)));
     });
     postings
         .command('update')
@@ -192,8 +197,9 @@ export function buildProgram(io = defaultIo) {
         else {
             rows = readRows(io, o.file);
         }
-        const result = await getClient(this).activities.log(rows);
-        emitFor(this)(result, () => renderActivities(result.data.collection));
+        const api = getClient(this);
+        const result = Array.isArray(rows) ? await api.activities.log(rows) : await api.activities.log(rows);
+        emitFor(this)(result, () => renderActivities(rowsOf(result)));
     });
     activities
         .command('report')

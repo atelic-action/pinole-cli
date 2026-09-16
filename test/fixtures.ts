@@ -39,14 +39,15 @@ export const activity = (over: Partial<Activity> = {}): Activity => ({
   ...over,
 });
 
+/** A page envelope as the API shapes it: prev and next are omitted, not null, at the edges. */
 export const page = <T>(collection: T[], meta: { page: number; total_pages: number; total: number }, next: string | null) => ({
   data: { collection },
   meta: { page: meta.page, per_page: collection.length, total: meta.total, total_pages: meta.total_pages },
   links: {
     self: `/v1/work/x?page=${meta.page}`,
     first: '/v1/work/x?page=1',
-    prev: meta.page > 1 ? `/v1/work/x?page=${meta.page - 1}` : null,
-    next,
+    ...(meta.page > 1 ? { prev: `/v1/work/x?page=${meta.page - 1}` } : {}),
+    ...(next ? { next } : {}),
     last: `/v1/work/x?page=${meta.total_pages}`,
   },
 });

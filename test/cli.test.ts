@@ -83,10 +83,12 @@ describe('pinole work postings upsert', () => {
     expect(await request.json()).toEqual({ postings: [{ company: 'A', title: 'B' }, { company: 'C', title: 'D' }] });
   });
 
-  it('wraps a single object from stdin as posting', async () => {
-    const h = harness(ok, { readStdin: () => JSON.stringify({ company: 'A', title: 'B', url: 'https://x' }) });
-    expect(await h.run(['work', 'postings', 'upsert'])).toBe(0);
+  it('wraps a single object from stdin as posting and renders the entity answer', async () => {
+    const entity = () => json({ data: { entity: posting({ id: 9 }) }, meta: {} }, 200);
+    const h = harness(entity, { readStdin: () => JSON.stringify({ company: 'A', title: 'B', url: 'https://x' }) });
+    expect(await h.run(['--table', 'work', 'postings', 'upsert'])).toBe(0);
     expect(await h.requests()[0]!.json()).toEqual({ posting: { company: 'A', title: 'B', url: 'https://x' } });
+    expect(h.out[0]).toContain('| 9 | 2026-09-14 | Watershed |');
   });
 
   it('fails cleanly on empty stdin', async () => {
@@ -165,9 +167,12 @@ describe('pinole work activities log', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pinole-'));
     const file = join(dir, 'rows.json');
     writeFileSync(file, JSON.stringify([{ performed_on: '2026-09-15', kind: 'networking', employer: 'A' }]));
-    const h = harness(ok, { readStdin: () => JSON.stringify({ performed_on: '2026-09-15', kind: 'interview', employer: 'B' }) });
+    let calls = 0;
+    const answer = () => (++calls === 1 ? ok() : json({ data: { entity: activity({ id: 12, kind: 'interview' }) }, meta: {} }, 201));
+    const h = harness(answer, { readStdin: () => JSON.stringify({ performed_on: '2026-09-15', kind: 'interview', employer: 'B' }) });
     await h.run(['work', 'activities', 'log', '--file', file]);
-    await h.run(['work', 'activities', 'log']);
+    await h.run(['--table', 'work', 'activities', 'log']);
+    expect(h.out[1]).toContain('| 12 | 2026-09-15 | interview |');
     expect(await h.requests()[0]!.json()).toEqual({ activities: [{ performed_on: '2026-09-15', kind: 'networking', employer: 'A' }] });
     expect(await h.requests()[1]!.json()).toEqual({ activity: { performed_on: '2026-09-15', kind: 'interview', employer: 'B' } });
   });

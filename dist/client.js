@@ -121,6 +121,16 @@ export function createClient(options = {}) {
             meta: { page: 1, per_page: rows.length, total: page.meta?.total ?? rows.length, total_pages: 1 },
         };
     }
+    async function upsertPostings(rows) {
+        const body = Array.isArray(rows) ? { postings: rows } : { posting: rows };
+        const { data } = await api.POST('/v1/work/postings', { body });
+        return data;
+    }
+    async function logActivities(rows) {
+        const body = Array.isArray(rows) ? { activities: rows } : { activity: rows };
+        const { data } = await api.POST('/v1/work/activities', { body });
+        return data;
+    }
     const postings = {
         async list(query = {}) {
             const { data } = await api.GET('/v1/work/postings', { params: { query } });
@@ -129,11 +139,7 @@ export function createClient(options = {}) {
         listAll(query = {}) {
             return walk((q) => postings.list(q), query);
         },
-        async upsert(rows) {
-            const body = Array.isArray(rows) ? { postings: rows } : { posting: rows };
-            const { data } = await api.POST('/v1/work/postings', { body });
-            return data;
-        },
+        upsert: upsertPostings,
         async update(id, posting) {
             const { data } = await api.PATCH('/v1/work/postings/{id}', { params: { path: { id } }, body: { posting } });
             return data;
@@ -150,11 +156,7 @@ export function createClient(options = {}) {
         listAll(query = {}) {
             return walk((q) => activities.list(q), query);
         },
-        async log(rows) {
-            const body = Array.isArray(rows) ? { activities: rows } : { activity: rows };
-            const { data } = await api.POST('/v1/work/activities', { body });
-            return data;
-        },
+        log: logActivities,
         async update(id, activity) {
             const { data } = await api.PATCH('/v1/work/activities/{id}', { params: { path: { id } }, body: { activity } });
             return data;

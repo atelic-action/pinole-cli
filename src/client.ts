@@ -9,18 +9,18 @@ export const KEYCHAIN_SERVICE = 'pinole-mcp-token';
 
 export type Posting = components['schemas']['Posting'];
 export type PostingInput = components['schemas']['PostingInput'];
-export type PostingEnvelope = components['schemas']['PostingEnvelope'];
+export type PostingEnvelope = components['schemas']['PostingEntity'];
 export type PostingCollection = components['schemas']['PostingCollection'];
-export type PostingBulkResult = components['schemas']['PostingBulkResult'];
+export type PostingBulkResult = components['schemas']['PostingBulk'];
 export type Activity = components['schemas']['Activity'];
 export type ActivityInput = components['schemas']['ActivityInput'];
-export type ActivityEnvelope = components['schemas']['ActivityEnvelope'];
+export type ActivityEnvelope = components['schemas']['ActivityEntity'];
 export type ActivityCollection = components['schemas']['ActivityCollection'];
-export type ActivityBulkResult = components['schemas']['ActivityBulkResult'];
+export type ActivityBulkResult = components['schemas']['ActivityBulk'];
 export type Funnel = components['schemas']['Funnel'];
-export type FunnelEnvelope = components['schemas']['FunnelEnvelope'];
+export type FunnelEnvelope = components['schemas']['FunnelEntity'];
 export type PaginationMeta = components['schemas']['PaginationMeta'];
-export type Links = components['schemas']['Links'];
+export type Links = components['schemas']['PaginationLinks'];
 
 export type PostingListQuery = NonNullable<paths['/v1/work/postings']['get']['parameters']['query']>;
 export type ActivityListQuery = NonNullable<paths['/v1/work/activities']['get']['parameters']['query']>;
@@ -165,6 +165,24 @@ export function createClient(options: ClientOptions = {}) {
     };
   }
 
+  /** A batch answers with the collection and counts; one row answers with the entity. */
+  async function upsertPostings(rows: PostingInput[]): Promise<PostingBulkResult>;
+  async function upsertPostings(row: PostingInput): Promise<PostingEnvelope>;
+  async function upsertPostings(rows: PostingInput | PostingInput[]): Promise<PostingBulkResult | PostingEnvelope> {
+    const body = Array.isArray(rows) ? { postings: rows } : { posting: rows };
+    const { data } = await api.POST('/v1/work/postings', { body });
+    return data as PostingBulkResult | PostingEnvelope;
+  }
+
+  /** A batch answers with the collection and the created count; one row answers with the entity. */
+  async function logActivities(rows: ActivityInput[]): Promise<ActivityBulkResult>;
+  async function logActivities(row: ActivityInput): Promise<ActivityEnvelope>;
+  async function logActivities(rows: ActivityInput | ActivityInput[]): Promise<ActivityBulkResult | ActivityEnvelope> {
+    const body = Array.isArray(rows) ? { activities: rows } : { activity: rows };
+    const { data } = await api.POST('/v1/work/activities', { body });
+    return data as ActivityBulkResult | ActivityEnvelope;
+  }
+
   const postings = {
     async list(query: PostingListQuery = {}): Promise<PostingCollection> {
       const { data } = await api.GET('/v1/work/postings', { params: { query } });
@@ -173,11 +191,7 @@ export function createClient(options: ClientOptions = {}) {
     listAll(query: PostingListQuery = {}) {
       return walk<Posting, PostingListQuery>((q) => postings.list(q), query);
     },
-    async upsert(rows: PostingInput | PostingInput[]): Promise<PostingBulkResult> {
-      const body = Array.isArray(rows) ? { postings: rows } : { posting: rows };
-      const { data } = await api.POST('/v1/work/postings', { body });
-      return data as PostingBulkResult;
-    },
+    upsert: upsertPostings,
     async update(id: number, posting: PostingInput): Promise<PostingEnvelope> {
       const { data } = await api.PATCH('/v1/work/postings/{id}', { params: { path: { id } }, body: { posting } });
       return data as PostingEnvelope;
@@ -195,11 +209,7 @@ export function createClient(options: ClientOptions = {}) {
     listAll(query: ActivityListQuery = {}) {
       return walk<Activity, ActivityListQuery>((q) => activities.list(q), query);
     },
-    async log(rows: ActivityInput | ActivityInput[]): Promise<ActivityBulkResult> {
-      const body = Array.isArray(rows) ? { activities: rows } : { activity: rows };
-      const { data } = await api.POST('/v1/work/activities', { body });
-      return data as ActivityBulkResult;
-    },
+    log: logActivities,
     async update(id: number, activity: ActivityInput): Promise<ActivityEnvelope> {
       const { data } = await api.PATCH('/v1/work/activities/{id}', { params: { path: { id } }, body: { activity } });
       return data as ActivityEnvelope;

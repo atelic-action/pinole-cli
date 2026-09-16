@@ -100,11 +100,18 @@ describe('createClient', () => {
     expect(all.meta).toEqual({ page: 1, per_page: 3, total: 3, total_pages: 1 });
   });
 
-  it('shapes upsert bodies for one row and for many', async () => {
-    const fetch = vi.fn(async (_input: Request) => json({ data: { collection: [] }, meta: { created: 0, updated: 0, matched: 0 } }));
+  it('shapes upsert bodies for one row and for many, and returns the entity or the batch', async () => {
+    const fetch = vi.fn(async (input: Request) =>
+      ((await input.clone().json()) as { posting?: unknown }).posting
+        ? json({ data: { entity: posting() }, meta: {} }, 201)
+        : json({ data: { collection: [posting(), posting({ id: 2 })] }, meta: { created: 1, updated: 1, matched: 0 } }, 201),
+    );
     const client = build(fetch as unknown as typeof globalThis.fetch);
-    await client.postings.upsert({ company: 'A', title: 'B' });
-    await client.postings.upsert([{ company: 'A', title: 'B' }, { company: 'C', title: 'D' }]);
+    const one = await client.postings.upsert({ company: 'A', title: 'B' });
+    const many = await client.postings.upsert([{ company: 'A', title: 'B' }, { company: 'C', title: 'D' }]);
+    expect(one.data.entity.id).toBe(1);
+    expect(many.meta).toEqual({ created: 1, updated: 1, matched: 0 });
+    expect(many.data.collection).toHaveLength(2);
     const bodies = await Promise.all(fetch.mock.calls.map((c) => c[0].json()));
     expect(bodies[0]).toEqual({ posting: { company: 'A', title: 'B' } });
     expect(bodies[1]).toEqual({ postings: [{ company: 'A', title: 'B' }, { company: 'C', title: 'D' }] });

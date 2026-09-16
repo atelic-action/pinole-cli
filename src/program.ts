@@ -70,6 +70,11 @@ function readRows<T>(io: ProgramIo, file: string | undefined): T | T[] {
   throw new Error('Expected a JSON object or an array of objects.');
 }
 
+/** The rows of a write answer: one entity for a single row, the collection for a batch. */
+function rowsOf<T>(result: { data: { entity: T } } | { data: { collection: T[] } }): T[] {
+  return 'entity' in result.data ? [result.data.entity] : result.data.collection;
+}
+
 /** Drops undefined values so absent flags never reach the wire. */
 function compact<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
@@ -146,8 +151,9 @@ export function buildProgram(io: ProgramIo = defaultIo): Command {
     .action(async function (this: Command) {
       const { file } = this.opts<{ file?: string }>();
       const rows = readRows<PostingInput>(io, file);
-      const result = await getClient(this).postings.upsert(rows);
-      emitFor(this)(result as Envelope, () => renderPostings(result.data.collection));
+      const api = getClient(this);
+      const result = Array.isArray(rows) ? await api.postings.upsert(rows) : await api.postings.upsert(rows);
+      emitFor(this)(result as Envelope, () => renderPostings(rowsOf(result)));
     });
 
   postings
@@ -237,8 +243,9 @@ export function buildProgram(io: ProgramIo = defaultIo): Command {
       } else {
         rows = readRows<ActivityInput>(io, o.file);
       }
-      const result = await getClient(this).activities.log(rows);
-      emitFor(this)(result as Envelope, () => renderActivities(result.data.collection));
+      const api = getClient(this);
+      const result = Array.isArray(rows) ? await api.activities.log(rows) : await api.activities.log(rows);
+      emitFor(this)(result as Envelope, () => renderActivities(rowsOf(result)));
     });
 
   activities

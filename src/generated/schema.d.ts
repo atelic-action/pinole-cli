@@ -4,57 +4,6 @@
  */
 
 export interface paths {
-    "/v1/work/postings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List postings
-         * @description Default order first_seen_on desc, id desc. No default status exclusion.
-         */
-        get: operations["listPostings"];
-        put?: never;
-        /**
-         * Create or update postings
-         * @description One posting or many, in one transaction. Per row the upsert ladder is url match,
-         *     then key match when the key has three or more comma separated segments, then a
-         *     fuzzy match on normalized company and title. A sweep status never replaces a
-         *     non sweep status; a fuzzy match fills only blank url, key, and board, and refreshes
-         *     verdict, fit_score, and status only while the current status is a sweep status.
-         */
-        post: operations["upsertPostings"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/work/postings/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["Id"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete a posting */
-        delete: operations["deletePosting"];
-        options?: never;
-        head?: never;
-        /**
-         * Update a posting
-         * @description Same writable fields as create. The status transition guard applies.
-         */
-        patch: operations["updatePosting"];
-        trace?: never;
-    };
     "/v1/work/activities": {
         parameters: {
             query?: never;
@@ -63,17 +12,112 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List activities
-         * @description Filter by an ISO week or by an inclusive date range, never both. Default order
-         *     performed_on asc, id asc.
+         * Lists activities
+         * @description The work search activities, oldest first. A window is either an ISO week, expanded to the Sunday to Saturday claim week containing that week's Monday, or a from and to pair; naming both is a 400.
          */
-        get: operations["listActivities"];
+        get: {
+            parameters: {
+                query?: {
+                    /** @description ISO week, YYYY-Www */
+                    week?: string;
+                    from?: string;
+                    to?: string;
+                    /**
+                     * @description :
+                     *      * `application`
+                     *      * `follow_up`
+                     *      * `networking`
+                     *      * `listings_review`
+                     *      * `registration`
+                     *      * `registration_maintenance`
+                     *      * `resume_submission`
+                     *      * `interview`
+                     * @enum {unknown}
+                     */
+                    kind?: string;
+                    reported?: boolean;
+                    job_posting_id?: number;
+                    page?: number;
+                    /** @description At most 100 */
+                    per_page?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description the activities, paginated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivityCollection"];
+                    };
+                };
+                /** @description week combined with from or to, or a malformed window */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description a user outside WORK_AUTHORIZED_EMAILS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         put?: never;
         /**
-         * Log activities
-         * @description One activity or many, created in one transaction and returned in row order.
+         * Logs activities
+         * @description One row ({ activity }) answers with the entity; a batch ({ activities }) is created in one transaction and answers with the collection in row order. performed_on, kind, and employer are required, and job_posting_id must name the caller's own posting.
          */
-        post: operations["createActivities"];
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        activity: components["schemas"]["ActivityInput"];
+                    } | {
+                        activities: components["schemas"]["ActivityInput"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivityEntity"] | components["schemas"]["ActivityBulk"];
+                    };
+                };
+                /** @description a row failed validation; nothing was saved */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RowError"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -85,23 +129,86 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["Id"];
+                id: number;
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         post?: never;
-        /** Delete an activity */
-        delete: operations["deleteActivity"];
+        /** Deletes an activity */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description another user's activity */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         /**
-         * Update an activity
-         * @description reported true sets reported_at to now when unset; reported false clears
-         *     reported_at and confirmation.
+         * Updates an activity
+         * @description reported: true stamps reported_at now unless it is already set; reported: false clears reported_at and the confirmation. exclusion_reason keeps an activity off the claim on purpose.
          */
-        patch: operations["updateActivity"];
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        activity: components["schemas"]["ActivityInput"];
+                    };
+                };
+            };
+            responses: {
+                /** @description updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivityEntity"];
+                    };
+                };
+                /** @description another user's activity */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/v1/work/funnel": {
@@ -111,8 +218,39 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The application funnel */
-        get: operations["getFunnel"];
+        /**
+         * Reads the funnel
+         * @description Counts over the caller's postings and activities as they stand today.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description the funnel */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FunnelEntity"];
+                    };
+                };
+                /** @description a user outside WORK_AUTHORIZED_EMAILS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         put?: never;
         post?: never;
         delete?: never;
@@ -121,55 +259,299 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/work/postings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists postings
+         * @description The postings the work search keeps, newest first by first_seen_on. No status is excluded by default.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Repeatable or a comma list: rejected, shortlisted, flagged, queued, applied, interviewing, closed */
+                    status?: string;
+                    /**
+                     * @description :
+                     *      * `w2`
+                     *      * `fractional`
+                     * @enum {unknown}
+                     */
+                    track?: string;
+                    board?: string;
+                    /** @description updated_at on or after this date */
+                    since?: string;
+                    /** @description first_seen_on on or after this date */
+                    seen_since?: string;
+                    /** @description Case insensitive match on company and title */
+                    q?: string;
+                    page?: number;
+                    /** @description At most 100 */
+                    per_page?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description the postings, paginated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PostingCollection"];
+                    };
+                };
+                /** @description an unknown filter value */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description no credential */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description a user outside WORK_AUTHORIZED_EMAILS */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Upserts postings
+         * @description One row ({ posting }) answers with the entity; a batch ({ postings }) answers with the collection in row order plus created, updated, and matched counts, all in one transaction. Ladder per row: url match, else an id bearing key (three or more comma separated segments), else a fuzzy match on normalized company and title, else create. A url or key match takes every given field except that a sweep status (rejected, shortlisted, flagged) never replaces a hand placed one; a fuzzy match fills only blank url, key, and board, and refreshes verdict, fit_score, and status only while the stored status is still a sweep verdict.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        posting: components["schemas"]["PostingInput"];
+                    } | {
+                        postings: components["schemas"]["PostingInput"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PostingEntity"] | components["schemas"]["PostingBulk"];
+                    };
+                };
+                /** @description a row failed validation; nothing was saved */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RowError"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/work/postings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes a posting */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description another user's posting */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Updates a posting
+         * @description Moves a posting along the status graph: rejected, shortlisted, and flagged may move among themselves or to queued; queued to applied, rejected, or closed (the role vanished first, reason filled); applied to interviewing, closed, or rejected; interviewing to closed or rejected; closed is terminal. closed_reason is required exactly when the status is closed, and applied_on stamps itself when the status becomes applied.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        posting: components["schemas"]["PostingInput"];
+                    };
+                };
+            };
+            responses: {
+                /** @description updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PostingEntity"];
+                    };
+                };
+                /** @description another user's posting */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description a transition the graph does not allow */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @enum {string} */
-        Track: "w2" | "fractional";
-        /**
-         * @description rejected, shortlisted, and flagged are the sweep statuses. Transitions: a sweep status
-         *     moves to any sweep status or queued; queued to applied or rejected; applied to
-         *     interviewing, closed, or rejected; interviewing to closed or rejected; closed is terminal.
-         * @enum {string}
-         */
-        PostingStatus: "rejected" | "shortlisted" | "flagged" | "queued" | "applied" | "interviewing" | "closed";
-        /** @enum {string} */
-        ClosedReason: "declined" | "silent" | "withdrawn" | "disqualified" | "filled";
-        /** @enum {string} */
-        ActivityKind: "application" | "follow_up" | "networking" | "listings_review" | "registration" | "registration_maintenance" | "resume_submission" | "interview";
+        Error: {
+            error: string;
+            details?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** @description A bulk create that failed validation on one row. Nothing in the batch was saved. */
+        RowError: {
+            error: string;
+            /** @description Zero based index of the failing row in the request */
+            row: number;
+            errors: {
+                [key: string]: string[];
+            };
+        };
+        PaginationMeta: {
+            page: number;
+            per_page: number;
+            total: number;
+            total_pages: number;
+        };
+        PaginationLinks: {
+            self: string;
+            first: string;
+            prev?: string;
+            next?: string;
+            last: string;
+        };
         Posting: {
             id: number;
             company: string;
             title: string;
-            url: string | null;
-            key: string | null;
-            board: string | null;
-            track: components["schemas"]["Track"];
-            status: components["schemas"]["PostingStatus"];
-            closed_reason: components["schemas"]["ClosedReason"] | null;
-            verdict: string | null;
-            fit_score: number | null;
+            url?: string | null;
+            /** @description The board's identifier; three or more comma separated segments is an ATS id */
+            key?: string | null;
+            board?: string | null;
+            /** @enum {string} */
+            track: "w2" | "fractional";
+            /** @enum {string} */
+            status: "rejected" | "shortlisted" | "flagged" | "queued" | "applied" | "interviewing" | "closed";
+            /** @enum {string|null} */
+            closed_reason?: "declined" | "silent" | "withdrawn" | "disqualified" | "filled" | null;
+            verdict?: string | null;
+            fit_score?: number | null;
             /** Format: date */
             first_seen_on: string;
             /** Format: date */
-            applied_on: string | null;
-            notes: string | null;
+            applied_on?: string | null;
+            notes?: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             updated_at: string;
         };
-        /** @description The writable posting fields. */
+        /** @description The writable posting fields. company, title, and status are required on create. */
         PostingInput: {
             company?: string;
             title?: string;
             url?: string | null;
             key?: string | null;
             board?: string | null;
-            track?: components["schemas"]["Track"];
-            status?: components["schemas"]["PostingStatus"];
-            closed_reason?: components["schemas"]["ClosedReason"] | null;
+            /** @enum {string} */
+            track?: "w2" | "fractional";
+            /** @enum {string} */
+            status?: "rejected" | "shortlisted" | "flagged" | "queued" | "applied" | "interviewing" | "closed";
+            /** @enum {string|null} */
+            closed_reason?: "declined" | "silent" | "withdrawn" | "disqualified" | "filled" | null;
             verdict?: string | null;
             fit_score?: number | null;
             /** Format: date */
@@ -178,33 +560,61 @@ export interface components {
             applied_on?: string | null;
             notes?: string | null;
         };
+        PostingEntity: {
+            data: {
+                entity: components["schemas"]["Posting"];
+            };
+            meta?: Record<string, never>;
+        };
+        PostingCollection: {
+            data: {
+                collection: components["schemas"]["Posting"][];
+            };
+            meta: components["schemas"]["PaginationMeta"];
+            links: components["schemas"]["PaginationLinks"];
+        };
+        PostingBulk: {
+            data: {
+                collection: components["schemas"]["Posting"][];
+            };
+            meta: {
+                created: number;
+                /** @description Matched by url or an id bearing key */
+                updated: number;
+                /** @description Matched by normalized company and title */
+                matched: number;
+            };
+        };
         Activity: {
             id: number;
             /** Format: date */
             performed_on: string;
-            kind: components["schemas"]["ActivityKind"];
+            /** @enum {string} */
+            kind: "application" | "follow_up" | "networking" | "listings_review" | "registration" | "registration_maintenance" | "resume_submission" | "interview";
             employer: string;
-            position: string | null;
-            url: string | null;
-            job_posting_id: number | null;
-            channel: string | null;
-            notes: string | null;
-            /** Format: date-time */
-            reported_at: string | null;
-            confirmation: string | null;
-            exclusion_reason: string | null;
-            /** @description Derived from reported_at. */
+            position?: string | null;
+            url?: string | null;
+            job_posting_id?: number | null;
+            /** @description How contact was made: email, site, phone */
+            channel?: string | null;
+            notes?: string | null;
+            /** @description Derived: reported_at is set */
             reported: boolean;
+            /** Format: date-time */
+            reported_at?: string | null;
+            confirmation?: string | null;
+            exclusion_reason?: string | null;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             updated_at: string;
         };
-        /** @description The writable activity fields. performed_on, kind, and employer are required on create. */
+        /** @description The writable activity fields. performed_on, kind, and employer are required on create. reported: true stamps reported_at once; reported: false clears it and the confirmation. */
         ActivityInput: {
             /** Format: date */
             performed_on?: string;
-            kind?: components["schemas"]["ActivityKind"];
+            /** @enum {string} */
+            kind?: "application" | "follow_up" | "networking" | "listings_review" | "registration" | "registration_maintenance" | "resume_submission" | "interview";
             employer?: string;
             position?: string | null;
             url?: string | null;
@@ -215,74 +625,20 @@ export interface components {
             confirmation?: string | null;
             exclusion_reason?: string | null;
         };
-        Funnel: {
-            /** Format: date-time */
-            as_of: string;
-            /** @description Postings with applied_on. */
-            applications: number;
-            /** @description Closed with reason declined. */
-            rejected: number;
-            /** @description Status applied plus closed with reason silent. */
-            silent: number;
-            /** @description Status interviewing. */
-            in_conversation: number;
-            /** @description Activities of kind interview. */
-            interviews: number;
-            withdrawn: number;
-            disqualified: number;
-            filled: number;
-        };
-        PaginationMeta: {
-            page: number;
-            per_page: number;
-            total: number;
-            total_pages: number;
-        };
-        Links: {
-            self: string;
-            first: string;
-            prev: string | null;
-            next: string | null;
-            last: string;
-        };
-        EmptyMeta: Record<string, never>;
-        PostingEnvelope: {
-            data: {
-                entity: components["schemas"]["Posting"];
-            };
-            meta: components["schemas"]["EmptyMeta"];
-        };
-        PostingCollection: {
-            data: {
-                collection: components["schemas"]["Posting"][];
-            };
-            meta: components["schemas"]["PaginationMeta"];
-            links: components["schemas"]["Links"];
-        };
-        PostingBulkResult: {
-            data: {
-                collection: components["schemas"]["Posting"][];
-            };
-            meta: {
-                created: number;
-                updated: number;
-                matched: number;
-            };
-        };
-        ActivityEnvelope: {
+        ActivityEntity: {
             data: {
                 entity: components["schemas"]["Activity"];
             };
-            meta: components["schemas"]["EmptyMeta"];
+            meta?: Record<string, never>;
         };
         ActivityCollection: {
             data: {
                 collection: components["schemas"]["Activity"][];
             };
             meta: components["schemas"]["PaginationMeta"];
-            links: components["schemas"]["Links"];
+            links: components["schemas"]["PaginationLinks"];
         };
-        ActivityBulkResult: {
+        ActivityBulk: {
             data: {
                 collection: components["schemas"]["Activity"][];
             };
@@ -290,342 +646,35 @@ export interface components {
                 created: number;
             };
         };
-        FunnelEnvelope: {
+        Funnel: {
+            /** Format: date */
+            as_of: string;
+            /** @description Postings with an applied_on date */
+            applications: number;
+            /** @description Closed with reason declined */
+            rejected: number;
+            /** @description Still applied, plus closed with reason silent */
+            silent: number;
+            /** @description Postings at interviewing */
+            in_conversation: number;
+            /** @description Activities of kind interview */
+            interviews: number;
+            withdrawn: number;
+            disqualified: number;
+            filled: number;
+        };
+        FunnelEntity: {
             data: {
                 entity: components["schemas"]["Funnel"];
             };
-            meta: components["schemas"]["EmptyMeta"];
-        };
-        Error: {
-            error: string;
-            details?: {
-                [key: string]: unknown;
-            };
-        };
-        BulkError: {
-            error: string;
-            /** @description The zero based index of the failing row. */
-            row: number;
-            errors: {
-                [key: string]: string[];
-            };
+            meta?: Record<string, never>;
         };
     };
-    responses: {
-        /** @description A bad filter. */
-        BadRequest: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Missing or invalid token. */
-        Unauthorized: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description The record is missing, or the caller is not allowlisted for the work domain. */
-        NotFound: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Validation failed. */
-        Unprocessable: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Validation failed on one row; nothing in the request was written. */
-        BulkUnprocessable: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["BulkError"];
-            };
-        };
-    };
-    parameters: {
-        Id: number;
-        Page: number;
-        PerPage: number;
-    };
+    responses: never;
+    parameters: never;
     requestBodies: never;
     headers: never;
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export interface operations {
-    listPostings: {
-        parameters: {
-            query?: {
-                /** @description One status, a comma separated list, or the parameter repeated. */
-                status?: string;
-                track?: components["schemas"]["Track"];
-                board?: string;
-                /** @description updated_at on or after this date. */
-                since?: string;
-                /** @description first_seen_on on or after this date. */
-                seen_since?: string;
-                /** @description Case insensitive match on company and title. */
-                q?: string;
-                page?: components["parameters"]["Page"];
-                per_page?: components["parameters"]["PerPage"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of postings. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PostingCollection"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    upsertPostings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    posting: components["schemas"]["PostingInput"];
-                } | {
-                    postings: components["schemas"]["PostingInput"][];
-                };
-            };
-        };
-        responses: {
-            /** @description The postings in request row order, with the created, updated, and matched counts. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PostingBulkResult"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["BulkUnprocessable"];
-        };
-    };
-    deletePosting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["Id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    updatePosting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["Id"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    posting: components["schemas"]["PostingInput"];
-                };
-            };
-        };
-        responses: {
-            /** @description The updated posting. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PostingEnvelope"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
-        };
-    };
-    listActivities: {
-        parameters: {
-            query?: {
-                /** @description ISO week (YYYY-Www), expanded to the claim week (Sunday to Saturday) containing that week's Monday. */
-                week?: string;
-                from?: string;
-                to?: string;
-                kind?: components["schemas"]["ActivityKind"];
-                reported?: boolean;
-                job_posting_id?: number;
-                page?: components["parameters"]["Page"];
-                per_page?: components["parameters"]["PerPage"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of activities. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActivityCollection"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    createActivities: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    activity: components["schemas"]["ActivityInput"];
-                } | {
-                    activities: components["schemas"]["ActivityInput"][];
-                };
-            };
-        };
-        responses: {
-            /** @description The created activities in request row order. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActivityBulkResult"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["BulkUnprocessable"];
-        };
-    };
-    deleteActivity: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["Id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    updateActivity: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["Id"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    activity: components["schemas"]["ActivityInput"];
-                };
-            };
-        };
-        responses: {
-            /** @description The updated activity. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActivityEnvelope"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
-        };
-    };
-    getFunnel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Funnel counts as of now. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FunnelEnvelope"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-}
+export type operations = Record<string, never>;

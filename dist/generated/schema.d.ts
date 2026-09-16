@@ -510,6 +510,7 @@ export interface components {
             /** @enum {string|null} */
             closed_reason?: "declined" | "silent" | "withdrawn" | "disqualified" | "filled" | null;
             verdict?: string | null;
+            /** Format: float */
             fit_score?: number | null;
             /** Format: date */
             first_seen_on: string;
@@ -535,6 +536,7 @@ export interface components {
             /** @enum {string|null} */
             closed_reason?: "declined" | "silent" | "withdrawn" | "disqualified" | "filled" | null;
             verdict?: string | null;
+            /** Format: float */
             fit_score?: number | null;
             /** Format: date */
             first_seen_on?: string;

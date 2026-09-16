@@ -549,7 +549,8 @@ components:
           type: string
           nullable: true
         fit_score:
-          type: integer
+          type: number
+          format: float
           nullable: true
         first_seen_on:
           type: string
@@ -613,7 +614,8 @@ components:
           type: string
           nullable: true
         fit_score:
-          type: integer
+          type: number
+          format: float
           nullable: true
         first_seen_on:
           type: string

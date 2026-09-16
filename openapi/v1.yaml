@@ -45,21 +45,18 @@ paths:
         required: false
       - name: kind
         in: query
-        required: false
-        enum:
-        - application
-        - follow_up
-        - networking
-        - listings_review
-        - registration
-        - registration_maintenance
-        - resume_submission
-        - interview
         schema:
           type: string
-        description: ":\n * `application` \n * `follow_up` \n * `networking` \n *
-          `listings_review` \n * `registration` \n * `registration_maintenance` \n
-          * `resume_submission` \n * `interview` \n "
+          enum:
+          - application
+          - follow_up
+          - networking
+          - listings_review
+          - registration
+          - registration_maintenance
+          - resume_submission
+          - interview
+        required: false
       - name: reported
         in: query
         required: false
@@ -241,13 +238,12 @@ paths:
           type: string
       - name: track
         in: query
-        required: false
-        enum:
-        - w2
-        - fractional
         schema:
           type: string
-        description: ":\n * `w2` \n * `fractional` \n "
+          enum:
+          - w2
+          - fractional
+        required: false
       - name: board
         in: query
         required: false

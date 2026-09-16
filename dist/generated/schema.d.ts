@@ -22,19 +22,7 @@ export interface paths {
                     week?: string;
                     from?: string;
                     to?: string;
-                    /**
-                     * @description :
-                     *      * `application`
-                     *      * `follow_up`
-                     *      * `networking`
-                     *      * `listings_review`
-                     *      * `registration`
-                     *      * `registration_maintenance`
-                     *      * `resume_submission`
-                     *      * `interview`
-                     * @enum {unknown}
-                     */
-                    kind?: string;
+                    kind?: "application" | "follow_up" | "networking" | "listings_review" | "registration" | "registration_maintenance" | "resume_submission" | "interview";
                     reported?: boolean;
                     job_posting_id?: number;
                     page?: number;
@@ -275,13 +263,7 @@ export interface paths {
                 query?: {
                     /** @description Repeatable or a comma list: rejected, shortlisted, flagged, queued, applied, interviewing, closed */
                     status?: string;
-                    /**
-                     * @description :
-                     *      * `w2`
-                     *      * `fractional`
-                     * @enum {unknown}
-                     */
-                    track?: string;
+                    track?: "w2" | "fractional";
                     board?: string;
                     /** @description updated_at on or after this date */
                     since?: string;

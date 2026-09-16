@@ -8,7 +8,7 @@ The command line client for the Pinole API, starting with the work search domain
 npm install -g github:atelic-action/pinole-cli#v0.1.0
 ```
 
-Node 20 or newer. The `prepare` script compiles TypeScript on install, so nothing is published to npm and the tag is the release. Drop the `#v0.1.0` to install the tip of `main`.
+Node 20 or newer. Nothing is published to npm; the tag is the release, and `dist/` is committed so the install needs no build step and no install time scripts. Drop the `#v0.1.0` to install the tip of `main`.
 
 ## Token and Base URL
 
@@ -125,3 +125,7 @@ npm run typecheck  # source and tests
 ```
 
 Tests mock `fetch`; nothing reaches the network, and the token is always injected, so the Keychain is never read under test.
+
+### Why dist Is Committed
+
+The natural setup, `dist/` ignored and a `prepare` script building on install, breaks under npm 11.17 for a global install from GitHub. npm exports its configuration into the environment of every child process, so the inner `npm install` pacote runs to prepare a git dependency inherits `global=true`, links the temporary clone into the global `node_modules`, and leaves a dangling symlink once the clone is deleted. npm 11.17 also gates install time scripts on global installs behind `--allow-scripts`, keyed by the git spec rather than the package name. Committing `dist/` sidesteps both: no scripts run on install. The cost is that every change to `src/` or `openapi/` is followed by `npm run build` and the rebuilt `dist/` goes in the same commit.

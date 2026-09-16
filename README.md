@@ -110,7 +110,7 @@ npm run generate
 
 ```sh
 curl -sS -H "X-Api-Key: $PINOLE_API_TOKEN" https://api.atelic.me/v1/openapi -o openapi/v1.yaml
-npm run generate && npm run typecheck && npm test
+npm run generate && npm run typecheck && npm test && npm run compile
 ```
 
 The first tag waits on that swap.
@@ -119,7 +119,7 @@ The first tag waits on that swap.
 
 ```sh
 npm install
-npm run build      # tsc into dist/
+npm run compile    # tsc into dist/
 npm test           # vitest, no network
 npm run typecheck  # source and tests
 ```
@@ -128,4 +128,4 @@ Tests mock `fetch`; nothing reaches the network, and the token is always injecte
 
 ### Why dist Is Committed
 
-The natural setup, `dist/` ignored and a `prepare` script building on install, breaks under npm 11.17 for a global install from GitHub. npm exports its configuration into the environment of every child process, so the inner `npm install` pacote runs to prepare a git dependency inherits `global=true`, links the temporary clone into the global `node_modules`, and leaves a dangling symlink once the clone is deleted. npm 11.17 also gates install time scripts on global installs behind `--allow-scripts`, keyed by the git spec rather than the package name. Committing `dist/` sidesteps both: no scripts run on install. The cost is that every change to `src/` or `openapi/` is followed by `npm run build` and the rebuilt `dist/` goes in the same commit.
+The natural setup, `dist/` ignored and a `prepare` script building on install, breaks under npm 11.17 for a global install from GitHub. npm exports its configuration into the environment of every child process, so the inner `npm install` pacote runs to prepare a git dependency inherits `global=true`, links the temporary clone into the global `node_modules`, and leaves a dangling symlink once the clone is deleted. npm 11.17 also gates install time scripts on global installs behind `--allow-scripts`, keyed by the git spec rather than the package name. Committing `dist/` sidesteps both: no scripts run on install. pacote starts that inner install for any of `prepare`, `prepack`, `preinstall`, `install`, `postinstall`, or `build` in `scripts`, which is why the compile step is named `compile` and none of those names may appear. The cost is that every change to `src/` or `openapi/` is followed by `npm run compile` and the rebuilt `dist/` goes in the same commit.

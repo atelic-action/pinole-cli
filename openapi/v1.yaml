@@ -1,0 +1,759 @@
+openapi: 3.1.0
+info:
+  title: Pinole API
+  version: "1.0"
+  description: |
+    Interim, hand authored description of the Pinole API's work domain, written from
+    the work domain wire contract (2026-09-16). The API repo generates the real
+    document from its request specs (rswag) at openapi/v1.yaml and serves it at
+    GET /v1/openapi; that document replaces this one as soon as it lands.
+servers:
+  - url: https://api.atelic.me
+security:
+  - ApiKey: []
+tags:
+  - name: postings
+    description: Job postings tracked through the work search.
+  - name: activities
+    description: Work search activities, the reportable ledger.
+  - name: funnel
+    description: Counts across the application funnel.
+paths:
+  /v1/work/postings:
+    get:
+      operationId: listPostings
+      tags: [postings]
+      summary: List postings
+      description: Default order first_seen_on desc, id desc. No default status exclusion.
+      parameters:
+        - name: status
+          in: query
+          description: One status, a comma separated list, or the parameter repeated.
+          schema:
+            type: string
+        - name: track
+          in: query
+          schema:
+            $ref: "#/components/schemas/Track"
+        - name: board
+          in: query
+          schema:
+            type: string
+        - name: since
+          in: query
+          description: updated_at on or after this date.
+          schema:
+            type: string
+            format: date
+        - name: seen_since
+          in: query
+          description: first_seen_on on or after this date.
+          schema:
+            type: string
+            format: date
+        - name: q
+          in: query
+          description: Case insensitive match on company and title.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: A page of postings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostingCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: upsertPostings
+      tags: [postings]
+      summary: Create or update postings
+      description: |
+        One posting or many, in one transaction. Per row the upsert ladder is url match,
+        then key match when the key has three or more comma separated segments, then a
+        fuzzy match on normalized company and title. A sweep status never replaces a
+        non sweep status; a fuzzy match fills only blank url, key, and board, and refreshes
+        verdict, fit_score, and status only while the current status is a sweep status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [posting]
+                  properties:
+                    posting:
+                      $ref: "#/components/schemas/PostingInput"
+                - type: object
+                  required: [postings]
+                  properties:
+                    postings:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/PostingInput"
+      responses:
+        "200":
+          description: The postings in request row order, with the created, updated, and matched counts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostingBulkResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/BulkUnprocessable"
+  /v1/work/postings/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    patch:
+      operationId: updatePosting
+      tags: [postings]
+      summary: Update a posting
+      description: Same writable fields as create. The status transition guard applies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [posting]
+              properties:
+                posting:
+                  $ref: "#/components/schemas/PostingInput"
+      responses:
+        "200":
+          description: The updated posting.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostingEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+    delete:
+      operationId: deletePosting
+      tags: [postings]
+      summary: Delete a posting
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/work/activities:
+    get:
+      operationId: listActivities
+      tags: [activities]
+      summary: List activities
+      description: |
+        Filter by an ISO week or by an inclusive date range, never both. Default order
+        performed_on asc, id asc.
+      parameters:
+        - name: week
+          in: query
+          description: ISO week (YYYY-Www), expanded to the claim week (Sunday to Saturday) containing that week's Monday.
+          schema:
+            type: string
+            pattern: "^\\d{4}-W\\d{2}$"
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: kind
+          in: query
+          schema:
+            $ref: "#/components/schemas/ActivityKind"
+        - name: reported
+          in: query
+          schema:
+            type: boolean
+        - name: job_posting_id
+          in: query
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: A page of activities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityCollection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createActivities
+      tags: [activities]
+      summary: Log activities
+      description: One activity or many, created in one transaction and returned in row order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [activity]
+                  properties:
+                    activity:
+                      $ref: "#/components/schemas/ActivityInput"
+                - type: object
+                  required: [activities]
+                  properties:
+                    activities:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/ActivityInput"
+      responses:
+        "201":
+          description: The created activities in request row order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityBulkResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/BulkUnprocessable"
+  /v1/work/activities/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    patch:
+      operationId: updateActivity
+      tags: [activities]
+      summary: Update an activity
+      description: |
+        reported true sets reported_at to now when unset; reported false clears
+        reported_at and confirmation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activity]
+              properties:
+                activity:
+                  $ref: "#/components/schemas/ActivityInput"
+      responses:
+        "200":
+          description: The updated activity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+    delete:
+      operationId: deleteActivity
+      tags: [activities]
+      summary: Delete an activity
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/work/funnel:
+    get:
+      operationId: getFunnel
+      tags: [funnel]
+      summary: The application funnel
+      responses:
+        "200":
+          description: Funnel counts as of now.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunnelEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: A personal access token. Authorization on /v1 carries a JWT only.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PerPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+  responses:
+    BadRequest:
+      description: A bad filter.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid token.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The record is missing, or the caller is not allowlisted for the work domain.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unprocessable:
+      description: Validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BulkUnprocessable:
+      description: Validation failed on one row; nothing in the request was written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BulkError"
+  schemas:
+    Track:
+      type: string
+      enum: [w2, fractional]
+    PostingStatus:
+      type: string
+      enum: [rejected, shortlisted, flagged, queued, applied, interviewing, closed]
+      description: |
+        rejected, shortlisted, and flagged are the sweep statuses. Transitions: a sweep status
+        moves to any sweep status or queued; queued to applied, closed, or rejected; applied to
+        interviewing, closed, or rejected; interviewing to closed or rejected; closed is terminal.
+    ClosedReason:
+      type: string
+      enum: [declined, silent, withdrawn, disqualified, filled]
+    ActivityKind:
+      type: string
+      enum:
+        - application
+        - follow_up
+        - networking
+        - listings_review
+        - registration
+        - registration_maintenance
+        - resume_submission
+        - interview
+    Posting:
+      type: object
+      required:
+        - id
+        - company
+        - title
+        - url
+        - key
+        - board
+        - track
+        - status
+        - closed_reason
+        - verdict
+        - fit_score
+        - first_seen_on
+        - applied_on
+        - notes
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        company:
+          type: string
+        title:
+          type: string
+        url:
+          type: [string, "null"]
+        key:
+          type: [string, "null"]
+        board:
+          type: [string, "null"]
+        track:
+          $ref: "#/components/schemas/Track"
+        status:
+          $ref: "#/components/schemas/PostingStatus"
+        closed_reason:
+          oneOf:
+            - $ref: "#/components/schemas/ClosedReason"
+            - type: "null"
+        verdict:
+          type: [string, "null"]
+        fit_score:
+          type: [integer, "null"]
+        first_seen_on:
+          type: string
+          format: date
+        applied_on:
+          type: [string, "null"]
+          format: date
+        notes:
+          type: [string, "null"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    PostingInput:
+      type: object
+      description: The writable posting fields.
+      properties:
+        company:
+          type: string
+        title:
+          type: string
+        url:
+          type: [string, "null"]
+        key:
+          type: [string, "null"]
+        board:
+          type: [string, "null"]
+        track:
+          $ref: "#/components/schemas/Track"
+        status:
+          $ref: "#/components/schemas/PostingStatus"
+        closed_reason:
+          oneOf:
+            - $ref: "#/components/schemas/ClosedReason"
+            - type: "null"
+        verdict:
+          type: [string, "null"]
+        fit_score:
+          type: [integer, "null"]
+        first_seen_on:
+          type: string
+          format: date
+        applied_on:
+          type: [string, "null"]
+          format: date
+        notes:
+          type: [string, "null"]
+    Activity:
+      type: object
+      required:
+        - id
+        - performed_on
+        - kind
+        - employer
+        - position
+        - url
+        - job_posting_id
+        - channel
+        - notes
+        - reported_at
+        - confirmation
+        - exclusion_reason
+        - reported
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        performed_on:
+          type: string
+          format: date
+        kind:
+          $ref: "#/components/schemas/ActivityKind"
+        employer:
+          type: string
+        position:
+          type: [string, "null"]
+        url:
+          type: [string, "null"]
+        job_posting_id:
+          type: [integer, "null"]
+        channel:
+          type: [string, "null"]
+        notes:
+          type: [string, "null"]
+        reported_at:
+          type: [string, "null"]
+          format: date-time
+        confirmation:
+          type: [string, "null"]
+        exclusion_reason:
+          type: [string, "null"]
+        reported:
+          type: boolean
+          description: Derived from reported_at.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ActivityInput:
+      type: object
+      description: The writable activity fields. performed_on, kind, and employer are required on create.
+      properties:
+        performed_on:
+          type: string
+          format: date
+        kind:
+          $ref: "#/components/schemas/ActivityKind"
+        employer:
+          type: string
+        position:
+          type: [string, "null"]
+        url:
+          type: [string, "null"]
+        job_posting_id:
+          type: [integer, "null"]
+        channel:
+          type: [string, "null"]
+        notes:
+          type: [string, "null"]
+        reported:
+          type: boolean
+        confirmation:
+          type: [string, "null"]
+        exclusion_reason:
+          type: [string, "null"]
+    Funnel:
+      type: object
+      required:
+        - as_of
+        - applications
+        - rejected
+        - silent
+        - in_conversation
+        - interviews
+        - withdrawn
+        - disqualified
+        - filled
+      properties:
+        as_of:
+          type: string
+          format: date-time
+        applications:
+          type: integer
+          description: Postings with applied_on.
+        rejected:
+          type: integer
+          description: Closed with reason declined.
+        silent:
+          type: integer
+          description: Status applied plus closed with reason silent.
+        in_conversation:
+          type: integer
+          description: Status interviewing.
+        interviews:
+          type: integer
+          description: Activities of kind interview.
+        withdrawn:
+          type: integer
+        disqualified:
+          type: integer
+        filled:
+          type: integer
+    PaginationMeta:
+      type: object
+      required: [page, per_page, total, total_pages]
+      properties:
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+    Links:
+      type: object
+      required: [self, first, prev, next, last]
+      properties:
+        self:
+          type: string
+        first:
+          type: string
+        prev:
+          type: [string, "null"]
+        next:
+          type: [string, "null"]
+        last:
+          type: string
+    EmptyMeta:
+      type: object
+      additionalProperties: false
+    PostingEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [entity]
+          properties:
+            entity:
+              $ref: "#/components/schemas/Posting"
+        meta:
+          $ref: "#/components/schemas/EmptyMeta"
+    PostingCollection:
+      type: object
+      required: [data, meta, links]
+      properties:
+        data:
+          type: object
+          required: [collection]
+          properties:
+            collection:
+              type: array
+              items:
+                $ref: "#/components/schemas/Posting"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+        links:
+          $ref: "#/components/schemas/Links"
+    PostingBulkResult:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [collection]
+          properties:
+            collection:
+              type: array
+              items:
+                $ref: "#/components/schemas/Posting"
+        meta:
+          type: object
+          required: [created, updated, matched]
+          properties:
+            created:
+              type: integer
+            updated:
+              type: integer
+            matched:
+              type: integer
+    ActivityEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [entity]
+          properties:
+            entity:
+              $ref: "#/components/schemas/Activity"
+        meta:
+          $ref: "#/components/schemas/EmptyMeta"
+    ActivityCollection:
+      type: object
+      required: [data, meta, links]
+      properties:
+        data:
+          type: object
+          required: [collection]
+          properties:
+            collection:
+              type: array
+              items:
+                $ref: "#/components/schemas/Activity"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+        links:
+          $ref: "#/components/schemas/Links"
+    ActivityBulkResult:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [collection]
+          properties:
+            collection:
+              type: array
+              items:
+                $ref: "#/components/schemas/Activity"
+        meta:
+          type: object
+          required: [created]
+          properties:
+            created:
+              type: integer
+    FunnelEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [entity]
+          properties:
+            entity:
+              $ref: "#/components/schemas/Funnel"
+        meta:
+          $ref: "#/components/schemas/EmptyMeta"
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    BulkError:
+      type: object
+      required: [error, row, errors]
+      properties:
+        error:
+          type: string
+        row:
+          type: integer
+          description: The zero based index of the failing row.
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string

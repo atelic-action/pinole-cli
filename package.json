@@ -1,0 +1,47 @@
+{
+  "name": "pinole",
+  "version": "0.1.0",
+  "description": "pinole: the Pinole API command line client",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atelic-action/pinole-cli.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "pinole": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "openapi"
+  ],
+  "scripts": {
+    "build": "tsc && mkdir -p dist/generated && cp src/generated/schema.d.ts dist/generated/schema.d.ts",
+    "prepare": "npm run build",
+    "generate": "openapi-typescript openapi/v1.yaml -o src/generated/schema.d.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "openapi-fetch": "^0.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "openapi-typescript": "^7.9.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.11"
+  }
+}

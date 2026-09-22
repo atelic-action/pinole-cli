@@ -110,7 +110,10 @@ export function createClient(options = {}) {
         let page = await fetchPage(query);
         rows.push(...page.data.collection);
         let guard = 0;
-        while (page.links?.next) {
+        // An empty page, or one at or past total_pages, ends the walk whatever
+        // links.next says: an API that once built `page=` for an empty read sent
+        // this loop round to the guard below (the W39 recruiter run, 2026-09-22).
+        while (page.links?.next && page.data.collection.length > 0 && (page.meta?.page ?? 0) < (page.meta?.total_pages ?? Infinity)) {
             if (++guard > 10_000)
                 throw new Error('Pagination did not terminate: links.next never emptied.');
             page = await fetchPage({ ...query, ...queryFromLink(page.links.next) });

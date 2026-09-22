@@ -1,6 +1,6 @@
 {
   "name": "pinole",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "pinole: the Pinole API command line client",
   "private": true,
   "type": "module",

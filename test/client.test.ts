@@ -100,6 +100,21 @@ describe('createClient', () => {
     expect(all.meta).toEqual({ page: 1, per_page: 3, total: 3, total_pages: 1 });
   });
 
+  it('stops listAll on an empty page even when links.next is set', async () => {
+    const fetch = vi.fn(async () => json(page([], { page: 1, total_pages: 0, total: 0 }, '/v1/work/postings?page&per_page=100')));
+    const client = build(fetch as unknown as typeof globalThis.fetch);
+    const all = await client.postings.listAll({});
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(all.data.collection).toEqual([]);
+  });
+
+  it('stops listAll at the last page even when links.next is set', async () => {
+    const fetch = vi.fn(async () => json(page([posting({ id: 1 })], { page: 2, total_pages: 2, total: 2 }, '/v1/work/postings?page=3')));
+    const client = build(fetch as unknown as typeof globalThis.fetch);
+    await client.postings.listAll({});
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('shapes upsert bodies for one row and for many, and returns the entity or the batch', async () => {
     const fetch = vi.fn(async (input: Request) =>
       ((await input.clone().json()) as { posting?: unknown }).posting

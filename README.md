@@ -5,10 +5,10 @@ The command line client for the Pinole API, starting with the work search domain
 ## Install
 
 ```sh
-npm install -g github:atelic-action/pinole-cli#v0.1.0
+npm install -g github:atelic-action/pinole-cli#v0.1.3
 ```
 
-Node 20 or newer. Nothing is published to npm; the tag is the release, and `dist/` is committed so the install needs no build step and no install time scripts. Drop the `#v0.1.0` to install the tip of `main`.
+Node 20 or newer. Nothing is published to npm; the tag is the release, and `dist/` is committed so the install needs no build step and no install time scripts. Drop the `#v0.1.3` to install the tip of `main`.
 
 ## Token and Base URL
 

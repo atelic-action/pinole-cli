@@ -7,7 +7,7 @@ info:
     the funnel. Every /v1/work route is allowlisted by WORK_AUTHORIZED_EMAILS and
     answers 404 to anyone else.'
 servers:
-- url: https://api.atelic.me
+- url: https://api.pinole.dev
 security:
 - api_key: []
 tags:

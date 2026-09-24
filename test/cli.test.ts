@@ -29,7 +29,7 @@ describe('pinole work postings list', () => {
     const code = await h.run(['work', 'postings', 'list', '--status', 'queued,applied', '--track', 'w2', '--board', 'greenhouse', '--since', '2026-09-01', '--seen-since', '2026-09-10', '-q', 'staff']);
     expect(code).toBe(0);
     const url = new URL(h.requests()[0]!.url);
-    expect(url.origin + url.pathname).toBe('https://api.atelic.me/v1/work/postings');
+    expect(url.origin + url.pathname).toBe('https://api.pinole.dev/v1/work/postings');
     expect(Object.fromEntries(url.searchParams)).toEqual({
       status: 'queued,applied', track: 'w2', board: 'greenhouse', since: '2026-09-01', seen_since: '2026-09-10', q: 'staff',
     });
@@ -105,7 +105,7 @@ describe('pinole work postings update', () => {
     expect(await h.run(['work', 'postings', 'update', '7', '--status', 'applied', '--applied-on', '2026-09-16', '--fit-score', '9', '--notes', 'sent'])).toBe(0);
     const request = h.requests()[0]!;
     expect(request.method).toBe('PATCH');
-    expect(request.url).toBe('https://api.atelic.me/v1/work/postings/7');
+    expect(request.url).toBe('https://api.pinole.dev/v1/work/postings/7');
     expect(await request.json()).toEqual({ posting: { status: 'applied', applied_on: '2026-09-16', fit_score: 9, notes: 'sent' } });
   });
 
@@ -188,9 +188,9 @@ describe('pinole work activities report', () => {
     const requests = h.requests();
     expect(requests).toHaveLength(3);
     expect(requests.map((r) => r.url)).toEqual([
-      'https://api.atelic.me/v1/work/activities/10',
-      'https://api.atelic.me/v1/work/activities/11',
-      'https://api.atelic.me/v1/work/activities/12',
+      'https://api.pinole.dev/v1/work/activities/10',
+      'https://api.pinole.dev/v1/work/activities/11',
+      'https://api.pinole.dev/v1/work/activities/12',
     ]);
     for (const r of requests) {
       expect(r.method).toBe('PATCH');
@@ -224,7 +224,7 @@ describe('pinole work funnel', () => {
   it('prints the envelope', async () => {
     const h = harness(() => json({ data: { entity: funnel }, meta: {} }));
     expect(await h.run(['work', 'funnel'])).toBe(0);
-    expect(h.requests()[0]!.url).toBe('https://api.atelic.me/v1/work/funnel');
+    expect(h.requests()[0]!.url).toBe('https://api.pinole.dev/v1/work/funnel');
     expect(JSON.parse(h.out[0]!)).toEqual({ data: { entity: funnel }, meta: {} });
   });
 

@@ -58,7 +58,7 @@ export function buildProgram(io = defaultIo) {
         .description('The Pinole API command line client.')
         .option('--json', 'JSON output, the raw envelope pretty printed (default)')
         .option('--table', 'Markdown table output')
-        .option('--api <url>', 'API base URL (else PINOLE_API_URL, else https://api.atelic.me)')
+        .option('--api <url>', 'API base URL (else PINOLE_API_URL, else https://api.pinole.dev)')
         .configureOutput({
         writeOut: (str) => io.stdout(str.replace(/\n$/, '')),
         writeErr: (str) => io.stderr(str.replace(/\n$/, '')),

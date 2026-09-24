@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import createOpenapiClient from 'openapi-fetch';
-export const DEFAULT_BASE_URL = 'https://api.atelic.me';
+export const DEFAULT_BASE_URL = 'https://api.pinole.dev';
 export const TOKEN_ENV = 'PINOLE_API_TOKEN';
 export const BASE_URL_ENV = 'PINOLE_API_URL';
 export const KEYCHAIN_SERVICE = 'pinole-mcp-token';
@@ -47,7 +47,7 @@ export function resolveToken(sources = {}) {
     }
     return fromKeychain;
 }
-/** The base URL, from PINOLE_API_URL, else https://api.atelic.me. */
+/** The base URL, from PINOLE_API_URL, else https://api.pinole.dev. */
 export function resolveBaseUrl(env = process.env) {
     const fromEnv = env[BASE_URL_ENV]?.trim();
     return (fromEnv || DEFAULT_BASE_URL).replace(/\/+$/, '');

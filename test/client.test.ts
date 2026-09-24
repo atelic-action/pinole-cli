@@ -34,8 +34,8 @@ describe('resolveToken', () => {
 });
 
 describe('resolveBaseUrl', () => {
-  it('defaults to api.atelic.me', () => {
-    expect(resolveBaseUrl({})).toBe('https://api.atelic.me');
+  it('defaults to api.pinole.dev', () => {
+    expect(resolveBaseUrl({})).toBe('https://api.pinole.dev');
   });
 
   it('reads PINOLE_API_URL and strips a trailing slash', () => {
@@ -46,7 +46,7 @@ describe('resolveBaseUrl', () => {
 describe('queryFromLink', () => {
   it('reads relative and absolute links', () => {
     expect(queryFromLink('/v1/work/postings?page=2&per_page=50')).toEqual({ page: '2', per_page: '50' });
-    expect(queryFromLink('https://api.atelic.me/v1/work/postings?page=3')).toEqual({ page: '3' });
+    expect(queryFromLink('https://api.pinole.dev/v1/work/postings?page=3')).toEqual({ page: '3' });
   });
 });
 

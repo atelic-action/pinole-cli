@@ -1,5 +1,5 @@
 import type { components, paths } from './generated/schema.js';
-export declare const DEFAULT_BASE_URL = "https://api.atelic.me";
+export declare const DEFAULT_BASE_URL = "https://api.pinole.dev";
 export declare const TOKEN_ENV = "PINOLE_API_TOKEN";
 export declare const BASE_URL_ENV = "PINOLE_API_URL";
 export declare const KEYCHAIN_SERVICE = "pinole-mcp-token";
@@ -36,7 +36,7 @@ export interface TokenSources {
  * pinole-mcp-token. Never logged.
  */
 export declare function resolveToken(sources?: TokenSources): string;
-/** The base URL, from PINOLE_API_URL, else https://api.atelic.me. */
+/** The base URL, from PINOLE_API_URL, else https://api.pinole.dev. */
 export declare function resolveBaseUrl(env?: NodeJS.ProcessEnv): string;
 export interface ClientOptions {
     baseUrl?: string | undefined;

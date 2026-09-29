@@ -178,6 +178,23 @@ describe('pinole work activities log', () => {
   });
 });
 
+describe('pinole work activities update', () => {
+  it('PATCHes the given fields under activity', async () => {
+    const h = harness(() => json({ data: { entity: activity({ notes: 'resent' }) }, meta: {} }));
+    expect(await h.run(['work', 'activities', 'update', '86', '--notes', 'resent', '--channel', 'Email', '--posting', '157', '--on', '2026-09-29'])).toBe(0);
+    const request = h.requests()[0]!;
+    expect(request.method).toBe('PATCH');
+    expect(request.url).toBe('https://api.pinole.dev/v1/work/activities/86');
+    expect(await request.json()).toEqual({ activity: { performed_on: '2026-09-29', job_posting_id: 157, channel: 'Email', notes: 'resent' } });
+  });
+
+  it('refuses an update with no fields', async () => {
+    const h = harness(() => json({}));
+    expect(await h.run(['work', 'activities', 'update', '86'])).toBe(1);
+    expect(h.err[0]).toMatch(/Nothing to update/);
+  });
+});
+
 describe('pinole work activities report', () => {
   it('issues one PATCH per id with reported true and the confirmation', async () => {
     const h = harness((request) => {

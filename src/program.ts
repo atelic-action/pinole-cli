@@ -249,6 +249,32 @@ export function buildProgram(io: ProgramIo = defaultIo): Command {
     });
 
   activities
+    .command('update')
+    .description('Update one activity.')
+    .argument('<id>', 'activity id', parseId)
+    .option('--on <date>', 'performed on')
+    .option('--kind <k>', 'activity kind')
+    .option('--employer <name>')
+    .option('--position <title>')
+    .option('--url <url>')
+    .option('--posting <id>', 'job posting id', parseId)
+    .option('--channel <c>')
+    .option('--notes <text>')
+    .action(async function (this: Command, id: number) {
+      const o = this.opts<{
+        on?: string; kind?: string; employer?: string; position?: string;
+        url?: string; posting?: number; channel?: string; notes?: string;
+      }>();
+      const activity = compact({
+        performed_on: o.on, kind: o.kind, employer: o.employer, position: o.position,
+        url: o.url, job_posting_id: o.posting, channel: o.channel, notes: o.notes,
+      }) as ActivityInput;
+      if (Object.keys(activity).length === 0) throw new Error('Nothing to update: pass at least one field flag.');
+      const result = await getClient(this).activities.update(id, activity);
+      emitFor(this)(result as Envelope, () => renderActivities([result.data.entity as Activity]));
+    });
+
+  activities
     .command('report')
     .description('Mark activities reported, one PATCH per id.')
     .requiredOption('--confirmation <code>', 'the confirmation code from the claim')

@@ -202,6 +202,29 @@ export function buildProgram(io = defaultIo) {
         emitFor(this)(result, () => renderActivities(rowsOf(result)));
     });
     activities
+        .command('update')
+        .description('Update one activity.')
+        .argument('<id>', 'activity id', parseId)
+        .option('--on <date>', 'performed on')
+        .option('--kind <k>', 'activity kind')
+        .option('--employer <name>')
+        .option('--position <title>')
+        .option('--url <url>')
+        .option('--posting <id>', 'job posting id', parseId)
+        .option('--channel <c>')
+        .option('--notes <text>')
+        .action(async function (id) {
+        const o = this.opts();
+        const activity = compact({
+            performed_on: o.on, kind: o.kind, employer: o.employer, position: o.position,
+            url: o.url, job_posting_id: o.posting, channel: o.channel, notes: o.notes,
+        });
+        if (Object.keys(activity).length === 0)
+            throw new Error('Nothing to update: pass at least one field flag.');
+        const result = await getClient(this).activities.update(id, activity);
+        emitFor(this)(result, () => renderActivities([result.data.entity]));
+    });
+    activities
         .command('report')
         .description('Mark activities reported, one PATCH per id.')
         .requiredOption('--confirmation <code>', 'the confirmation code from the claim')

@@ -5,10 +5,10 @@ The command line client for the Pinole API, starting with the work search domain
 ## Install
 
 ```sh
-npm install -g github:atelic-action/pinole-cli#v0.1.3
+npm install -g github:atelic-action/pinole-cli#v0.1.4
 ```
 
-Node 20 or newer. Nothing is published to npm; the tag is the release, and `dist/` is committed so the install needs no build step and no install time scripts. Drop the `#v0.1.3` to install the tip of `main`.
+Node 20 or newer. Nothing is published to npm; the tag is the release, and `dist/` is committed so the install needs no build step and no install time scripts. Drop the `#v0.1.4` to install the tip of `main`.
 
 ## Token and Base URL
 
@@ -66,6 +66,12 @@ Log one activity from flags, or many from a file or stdin (an array is sent as `
 ```sh
 pinole work activities log --on 2026-09-15 --kind application --employer Watershed --position "Staff Engineer" --posting 42 --channel greenhouse
 pinole work activities log --file activities.json
+```
+
+Update one activity, the same flags as `log` and at least one of them (the row's kind, employer, dates, channel, and notes are all editable; reporting stays with `report`):
+
+```bash
+pinole work activities update 86 --notes "follow up resent to garet@joinmodernhealth.com" --channel Email
 ```
 
 Report activities against a claim: one PATCH per id with `reported: true` and the confirmation code. The command stops at the first failure, so the ids after it stay unreported:

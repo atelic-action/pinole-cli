@@ -228,10 +228,44 @@ describe('pinole work activities report', () => {
 });
 
 describe('pinole work activities exclude', () => {
-  it('PATCHes the exclusion reason', async () => {
-    const h = harness(() => json({ data: { entity: activity({ exclusion_reason: 'duplicate' }) }, meta: {} }));
+  const excluding = () => harness((request) => {
+    const id = Number(request.url.split('/').pop());
+    return json({ data: { entity: activity({ id, exclusion_reason: 'duplicate' }) }, meta: {} });
+  });
+
+  it('issues one PATCH per id with the exclusion reason', async () => {
+    const h = excluding();
+    expect(await h.run(['work', 'activities', 'exclude', '--reason', 'duplicate', '10', '11', '12'])).toBe(0);
+    const requests = h.requests();
+    expect(requests.map((r) => r.url)).toEqual([
+      'https://api.pinole.dev/v1/work/activities/10',
+      'https://api.pinole.dev/v1/work/activities/11',
+      'https://api.pinole.dev/v1/work/activities/12',
+    ]);
+    for (const r of requests) {
+      expect(r.method).toBe('PATCH');
+      expect(await r.json()).toEqual({ activity: { exclusion_reason: 'duplicate' } });
+    }
+    const printed = JSON.parse(h.out[0]!);
+    expect(printed.meta).toEqual({ excluded: 3, reason: 'duplicate' });
+    expect(printed.data.collection.map((a: { id: number }) => a.id)).toEqual([10, 11, 12]);
+  });
+
+  it('prints a single id in the same collection shape as report', async () => {
+    const h = excluding();
     expect(await h.run(['work', 'activities', 'exclude', '10', '--reason', 'duplicate'])).toBe(0);
-    expect(await h.requests()[0]!.json()).toEqual({ activity: { exclusion_reason: 'duplicate' } });
+    const printed = JSON.parse(h.out[0]!);
+    expect(printed.meta).toEqual({ excluded: 1, reason: 'duplicate' });
+    expect(printed.data.collection).toHaveLength(1);
+    expect(printed.data.collection[0]).toMatchObject({ id: 10, exclusion_reason: 'duplicate' });
+  });
+
+  it('stops at the first failure and exits 1', async () => {
+    let calls = 0;
+    const h = harness(() => (++calls === 2 ? json({ error: 'Activity not found' }, 404) : json({ data: { entity: activity() }, meta: {} })));
+    expect(await h.run(['work', 'activities', 'exclude', '--reason', 'duplicate', '10', '99', '12'])).toBe(1);
+    expect(h.fetch).toHaveBeenCalledTimes(2);
+    expect(h.err[0]).toBe('Activity not found (HTTP 404)');
   });
 });
 

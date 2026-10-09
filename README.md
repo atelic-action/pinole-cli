@@ -5,10 +5,10 @@ The command line client for the Pinole API, starting with the work search domain
 ## Install
 
 ```sh
-npm install -g github:atelic-action/pinole-cli#v0.1.4
+npm install -g github:atelic-action/pinole-cli#v0.1.5
 ```
 
-Node 20 or newer. Nothing is published to npm; the tag is the release, and `dist/` is committed so the install needs no build step and no install time scripts. Drop the `#v0.1.4` to install the tip of `main`.
+Node 20 or newer. Nothing is published to npm; the tag is the release, and `dist/` is committed so the install needs no build step and no install time scripts. Drop the `#v0.1.5` to install the tip of `main`.
 
 ## Token and Base URL
 
@@ -80,11 +80,13 @@ Report activities against a claim: one PATCH per id with `reported: true` and th
 pinole work activities report --confirmation 8F2K1 101 102 103
 ```
 
-Exclude an activity from the claim with a reason:
+Exclude activities from the claim with a reason: one PATCH per id, stopping at the first failure like `report`:
 
 ```sh
-pinole work activities exclude 104 --reason "duplicate of 101"
+pinole work activities exclude 104 105 --reason "duplicate of 101"
 ```
+
+Both `report` and `exclude` print the rows they wrote at `data.collection`, with the count and the confirmation or reason in `meta`.
 
 ### Funnel
 

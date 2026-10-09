@@ -242,13 +242,19 @@ export function buildProgram(io = defaultIo) {
     });
     activities
         .command('exclude')
-        .description('Record why an activity is excluded from the claim.')
-        .argument('<id>', 'activity id', parseId)
+        .description('Record why activities are excluded from the claim, one PATCH per id.')
         .requiredOption('--reason <text>', 'the exclusion reason')
-        .action(async function (id) {
+        .argument('<ids...>', 'activity ids', (value, previous = []) => [...previous, parseId(value)])
+        .action(async function (ids) {
         const { reason } = this.opts();
-        const result = await getClient(this).activities.update(id, { exclusion_reason: reason });
-        emitFor(this)(result, () => renderActivities([result.data.entity]));
+        const api = getClient(this);
+        const excluded = [];
+        for (const id of ids) {
+            const result = await api.activities.update(id, { exclusion_reason: reason });
+            excluded.push(result.data.entity);
+        }
+        const payload = { data: { collection: excluded }, meta: { excluded: excluded.length, reason } };
+        emitFor(this)(payload, () => renderActivities(excluded));
     });
     // funnel
     work

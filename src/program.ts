@@ -293,13 +293,19 @@ export function buildProgram(io: ProgramIo = defaultIo): Command {
 
   activities
     .command('exclude')
-    .description('Record why an activity is excluded from the claim.')
-    .argument('<id>', 'activity id', parseId)
+    .description('Record why activities are excluded from the claim, one PATCH per id.')
     .requiredOption('--reason <text>', 'the exclusion reason')
-    .action(async function (this: Command, id: number) {
+    .argument('<ids...>', 'activity ids', (value: string, previous: number[] = []) => [...previous, parseId(value)])
+    .action(async function (this: Command, ids: number[]) {
       const { reason } = this.opts<{ reason: string }>();
-      const result = await getClient(this).activities.update(id, { exclusion_reason: reason });
-      emitFor(this)(result as Envelope, () => renderActivities([result.data.entity]));
+      const api = getClient(this);
+      const excluded: Activity[] = [];
+      for (const id of ids) {
+        const result = await api.activities.update(id, { exclusion_reason: reason });
+        excluded.push(result.data.entity);
+      }
+      const payload = { data: { collection: excluded }, meta: { excluded: excluded.length, reason } };
+      emitFor(this)(payload, () => renderActivities(excluded));
     });
 
   // funnel
